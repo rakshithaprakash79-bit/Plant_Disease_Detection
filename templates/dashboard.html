@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <title>Dashboard - Plant Disease Detection</title>
 
     <style>
+
         * {
             box-sizing: border-box;
         }
@@ -29,6 +31,10 @@
             text-decoration: none;
             margin: 0 15px;
             font-weight: bold;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
         }
 
         .container {
@@ -64,6 +70,11 @@
             color: #2e7d32;
         }
 
+        .card p {
+            margin: 5px;
+            font-weight: bold;
+        }
+
         .table-card {
             margin-top: 35px;
             background: white;
@@ -73,12 +84,18 @@
             box-shadow: 0 5px 20px rgba(0,0,0,0.1);
         }
 
+        .table-card h2 {
+            margin-top: 0;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 20px;
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px;
             border-bottom: 1px solid #ddd;
             text-align: center;
@@ -87,6 +104,10 @@
         th {
             background: #2e7d32;
             color: white;
+        }
+
+        tr:hover {
+            background: #f1f8e9;
         }
 
         .btn {
@@ -103,81 +124,205 @@
         .btn:hover {
             background: #1b5e20;
         }
+
+        .empty {
+            text-align: center;
+            padding: 25px;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+
+            .container {
+                margin: 25px auto;
+                padding: 15px;
+            }
+
+            nav a {
+                margin: 0 7px;
+                font-size: 14px;
+            }
+
+            .card {
+                width: 100%;
+            }
+
+            th,
+            td {
+                padding: 9px;
+                font-size: 13px;
+            }
+        }
+
     </style>
+
 </head>
 
 <body>
 
-<nav>
-    <a href="/">Home</a>
-    <a href="/upload">Detect Disease</a>
-    <a href="/dashboard">Dashboard</a>
-</nav>
+    <!-- Navigation -->
 
-<div class="container">
+    <nav>
 
-    <h1>📊 Plant Disease Dashboard</h1>
+        <a href="/">Home</a>
 
-    <div class="cards">
-
-        <div class="card">
-            <h2>{{ total }}</h2>
-            <p>Total Predictions</p>
-        </div>
-
-        <div class="card">
-            <h2>{{ healthy }}</h2>
-            <p>Healthy Plants</p>
-        </div>
-
-        <div class="card">
-            <h2>{{ diseased }}</h2>
-            <p>Diseased Plants</p>
-        </div>
-
-    </div>
-
-    <div class="table-card">
-
-        <h2>Prediction History</h2>
-
-        {% if predictions %}
-
-        <table>
-
-            <tr>
-                <th>Image</th>
-                <th>Disease</th>
-                <th>Confidence</th>
-                <th>Status</th>
-            </tr>
-
-            {% for prediction in predictions %}
-
-            <tr>
-                <td>{{ prediction[0] }}</td>
-                <td>{{ prediction[1] }}</td>
-                <td>{{ prediction[2] }}%</td>
-                <td>{{ prediction[3] }}</td>
-            </tr>
-
-            {% endfor %}
-
-        </table>
-
-        {% else %}
-
-        <p>No predictions available yet.</p>
-
-        {% endif %}
-
-        <a href="/upload" class="btn">
-            🔍 New Prediction
+        <a href="/upload">
+            Detect Disease
         </a>
 
+        <a href="/dashboard">
+            Dashboard
+        </a>
+
+    </nav>
+
+
+    <!-- Main Container -->
+
+    <div class="container">
+
+        <h1>
+            📊 Plant Disease Dashboard
+        </h1>
+
+
+        <!-- Statistics Cards -->
+
+        <div class="cards">
+
+            <div class="card">
+
+                <h2>
+                    {{ total }}
+                </h2>
+
+                <p>
+                    Total Predictions
+                </p>
+
+            </div>
+
+
+            <div class="card">
+
+                <h2>
+                    {{ healthy }}
+                </h2>
+
+                <p>
+                    Healthy Plants 🌿
+                </p>
+
+            </div>
+
+
+            <div class="card">
+
+                <h2>
+                    {{ diseased }}
+                </h2>
+
+                <p>
+                    Diseased Plants ⚠️
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- Prediction History -->
+
+        <div class="table-card">
+
+            <h2>
+                Prediction History
+            </h2>
+
+
+            {% if predictions %}
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Image
+                        </th>
+
+                        <th>
+                            Disease
+                        </th>
+
+                        <th>
+                            Confidence
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for prediction in predictions %}
+
+                    <tr>
+
+                        <td>
+                            {{ prediction[0] }}
+                        </td>
+
+                        <td>
+                            {{ prediction[1] }}
+                        </td>
+
+                        <td>
+                            {{ "%.2f"|format(prediction[2]|float) }}%
+                        </td>
+
+                        <td>
+                            {{ prediction[3] }}
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+
+            {% else %}
+
+            <div class="empty">
+
+                <p>
+                    No predictions available yet.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+
+            <!-- New Prediction Button -->
+
+            <a href="/upload" class="btn">
+                🔍 New Prediction
+            </a>
+
+        </div>
+
     </div>
 
-</div>
-
 </body>
+
 </html>
