@@ -1,13 +1,17 @@
 import os
 
-# TensorFlow CPU optimization
+# =========================================================
+# TensorFlow CPU / Render optimization
+# =========================================================
+
 os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
 os.environ["TF_NUM_INTEROP_THREADS"] = "1"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 from flask import Flask, render_template, request
 import tensorflow as tf
 import numpy as np
+from werkzeug.utils import secure_filename
 
 from database import (
     create_database,
@@ -16,133 +20,281 @@ from database import (
     get_statistics
 )
 
-
 # =========================================================
-# FLASK APP
+# Flask App
 # =========================================================
 
 app = Flask(__name__, template_folder="templates")
 
-
 # =========================================================
-# PATHS
+# Paths
 # =========================================================
 
-MODEL_PATH = "model/plant_disease_model.keras"
-CLASS_NAMES_PATH = "model/class_names.txt"
-UPLOAD_FOLDER = "static/uploads"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "model",
+    "plant_disease_model.keras"
+)
+
+CLASS_NAMES_PATH = os.path.join(
+    BASE_DIR,
+    "model",
+    "class_names.txt"
+)
+
+UPLOAD_FOLDER = os.path.join(
+    BASE_DIR,
+    "static",
+    "uploads"
+)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+# Create upload folder
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-
 # =========================================================
-# DATABASE
+# Database
 # =========================================================
 
 create_database()
 
-
 # =========================================================
-# LOAD AI MODEL
+# Load AI Model
 # =========================================================
 
 print("Loading AI model...")
 
-model = tf.keras.models.load_model(MODEL_PATH)
+try:
 
-with open(CLASS_NAMES_PATH, "r") as file:
-    class_names = [line.strip() for line in file.readlines()]
+    model = tf.keras.models.load_model(
+        MODEL_PATH,
+        compile=False
+    )
 
-print("AI model loaded successfully!")
-print("Number of classes:", len(class_names))
+    print("AI model loaded successfully!")
+
+except Exception as e:
+
+    print("ERROR loading AI model:")
+    print(e)
+    model = None
 
 
 # =========================================================
-# HOME
+# Load Class Names
+# =========================================================
+
+try:
+
+    with open(CLASS_NAMES_PATH, "r", encoding="utf-8") as file:
+
+        class_names = [
+            line.strip()
+            for line in file
+            if line.strip()
+        ]
+
+    print("Number of classes:", len(class_names))
+
+except Exception as e:
+
+    print("ERROR loading class names:")
+    print(e)
+
+    class_names = []
+
+
+# =========================================================
+# Home
 # =========================================================
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+
+    return render_template(
+        "index.html"
+    )
 
 
 # =========================================================
-# UPLOAD PAGE
+# Upload Page
 # =========================================================
 
 @app.route("/upload")
 def upload():
-    return render_template("upload.html")
+
+    return render_template(
+        "upload.html"
+    )
 
 
 # =========================================================
-# PREDICT
+# Prediction
 # =========================================================
 
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    # Check image
+    # -----------------------------------------------------
+    # Check model
+    # -----------------------------------------------------
+
+    if model is None:
+
+        return """
+        <h2>AI model is not available.</h2>
+        <p>Please try again later.</p>
+        """, 500
+
+
+    # -----------------------------------------------------
+    # Check uploaded file
+    # -----------------------------------------------------
+
     if "leaf_image" not in request.files:
-        return "No image selected."
+
+        return """
+        <h2>No image selected.</h2>
+        <a href="/upload">Go Back</a>
+        """, 400
+
 
     image = request.files["leaf_image"]
 
+
     if image.filename == "":
-        return "No image selected."
+
+        return """
+        <h2>No image selected.</h2>
+        <a href="/upload">Go Back</a>
+        """, 400
+
+
+    # -----------------------------------------------------
+    # Secure filename
+    # -----------------------------------------------------
+
+    filename = secure_filename(
+        image.filename
+    )
+
+
+    # If filename becomes empty
+    if not filename:
+
+        return """
+        <h2>Invalid image filename.</h2>
+        <a href="/upload">Go Back</a>
+        """, 400
+
 
     # -----------------------------------------------------
     # Save image
     # -----------------------------------------------------
-
-    filename = image.filename
 
     image_path = os.path.join(
         app.config["UPLOAD_FOLDER"],
         filename
     )
 
-    image.save(image_path)
+    try:
+
+        image.save(image_path)
+
+    except Exception as e:
+
+        print("Image save error:", e)
+
+        return """
+        <h2>Unable to save image.</h2>
+        <a href="/upload">Go Back</a>
+        """, 500
+
 
     # -----------------------------------------------------
     # Prepare image
     # -----------------------------------------------------
 
-    img = tf.keras.utils.load_img(
-        image_path,
-        target_size=(128, 128)
-    )
+    try:
 
-    img_array = tf.keras.utils.img_to_array(img)
+        img = tf.keras.utils.load_img(
+            image_path,
+            target_size=(128, 128)
+        )
 
-    img_array = np.expand_dims(
-        img_array,
-        axis=0
-    )
+        img_array = tf.keras.utils.img_to_array(
+            img
+        )
+
+        # Normalize pixel values
+        img_array = img_array / 255.0
+
+        img_array = np.expand_dims(
+            img_array,
+            axis=0
+        )
+
+    except Exception as e:
+
+        print("Image processing error:", e)
+
+        return """
+        <h2>Invalid image.</h2>
+        <p>Please upload a valid plant leaf image.</p>
+        <a href="/upload">Try Again</a>
+        """, 400
+
 
     # -----------------------------------------------------
     # AI Prediction
     # -----------------------------------------------------
 
-    predictions = model.predict(
-        img_array,
-        verbose=0
-    )
+    try:
 
-    predicted_index = int(
-        np.argmax(predictions[0])
-    )
+        predictions = model.predict(
+            img_array,
+            verbose=0
+        )
 
-    confidence = float(
-        np.max(predictions[0]) * 100
-    )
+        predicted_index = int(
+            np.argmax(predictions[0])
+        )
 
-    disease = class_names[predicted_index]
+        confidence = float(
+            np.max(predictions[0]) * 100
+        )
+
+    except Exception as e:
+
+        print("Prediction error:", e)
+
+        return """
+        <h2>Prediction failed.</h2>
+        <p>Please try another image.</p>
+        <a href="/upload">Try Again</a>
+        """, 500
+
 
     # -----------------------------------------------------
-    # Status
+    # Get disease name
+    # -----------------------------------------------------
+
+    if predicted_index < len(class_names):
+
+        disease = class_names[
+            predicted_index
+        ]
+
+    else:
+
+        disease = "Unknown"
+
+
+    # -----------------------------------------------------
+    # Plant status
     # -----------------------------------------------------
 
     if "healthy" in disease.lower():
@@ -151,8 +303,8 @@ def predict():
 
         information = (
             "The uploaded leaf appears healthy. "
-            "Continue regular watering, nutrition and "
-            "proper plant care."
+            "Continue regular watering, proper nutrition "
+            "and regular plant care."
         )
 
     else:
@@ -161,62 +313,120 @@ def predict():
 
         information = (
             "The AI model detected a possible plant disease. "
-            "Consider proper plant care and consult an "
-            "agricultural expert for confirmation and treatment."
+            "For accurate confirmation and treatment, "
+            "consult an agricultural expert."
         )
+
 
     # -----------------------------------------------------
     # Save prediction to database
     # -----------------------------------------------------
 
-    add_prediction(
-        filename,
-        disease,
-        confidence,
-        status
-    )
+    try:
+
+        add_prediction(
+            filename,
+            disease,
+            confidence,
+            status
+        )
+
+    except Exception as e:
+
+        print("Database error:", e)
+
 
     # -----------------------------------------------------
-    # Result page
+    # Result Page
     # -----------------------------------------------------
 
     return render_template(
+
         "result.html",
+
         disease=disease,
+
         confidence=f"{confidence:.2f}",
+
         status=status,
+
         information=information,
+
         image_path="uploads/" + filename
     )
 
 
 # =========================================================
-# DASHBOARD
+# Dashboard
 # =========================================================
 
 @app.route("/dashboard")
 def dashboard():
 
-    predictions = get_predictions()
+    try:
 
-    total, healthy, diseased = get_statistics()
+        predictions = get_predictions()
+
+        total, healthy, diseased = get_statistics()
+
+    except Exception as e:
+
+        print("Dashboard database error:", e)
+
+        predictions = []
+
+        total = 0
+        healthy = 0
+        diseased = 0
+
 
     return render_template(
+
         "dashboard.html",
+
         predictions=predictions,
+
         total=total,
+
         healthy=healthy,
+
         diseased=diseased
     )
 
 
 # =========================================================
-# RUN
+# Health Check
+# =========================================================
+
+@app.route("/health")
+def health():
+
+    if model is not None:
+
+        return {
+            "status": "ok",
+            "model": "loaded",
+            "classes": len(class_names)
+        }
+
+    return {
+        "status": "error",
+        "model": "not loaded"
+    }, 500
+
+
+# =========================================================
+# Run Application
 # =========================================================
 
 if __name__ == "__main__":
 
-    port = int(os.environ.get("PORT", 5000))
+    port = int(
+        os.environ.get(
+            "PORT",
+            5000
+        )
+    )
 
     app.run(
         host="0.0.0.0",
