@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard - Plant Disease Detection</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f8e9;
+            color: #1b5e20;
+        }
+
+        nav {
+            background: #2e7d32;
+            padding: 18px;
+            text-align: center;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .cards {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            min-width: 200px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            font-size: 32px;
+            margin: 10px;
+            color: #2e7d32;
+        }
+
+        .table-card {
+            margin-top: 35px;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            overflow-x: auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #2e7d32;
+            color: white;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-top: 25px;
+            padding: 13px 25px;
+            background: #2e7d32;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #1b5e20;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav>
+    <a href="/">Home</a>
+    <a href="/upload">Detect Disease</a>
+    <a href="/dashboard">Dashboard</a>
+</nav>
+
+<div class="container">
+
+    <h1>📊 Plant Disease Dashboard</h1>
+
+    <div class="cards">
+
+        <div class="card">
+            <h2>{{ total }}</h2>
+            <p>Total Predictions</p>
+        </div>
+
+        <div class="card">
+            <h2>{{ healthy }}</h2>
+            <p>Healthy Plants</p>
+        </div>
+
+        <div class="card">
+            <h2>{{ diseased }}</h2>
+            <p>Diseased Plants</p>
+        </div>
+
+    </div>
+
+    <div class="table-card">
+
+        <h2>Prediction History</h2>
+
+        {% if predictions %}
+
+        <table>
+
+            <tr>
+                <th>Image</th>
+                <th>Disease</th>
+                <th>Confidence</th>
+                <th>Status</th>
+            </tr>
+
+            {% for prediction in predictions %}
+
+            <tr>
+                <td>{{ prediction[0] }}</td>
+                <td>{{ prediction[1] }}</td>
+                <td>{{ "%.2f"|format(prediction[2]) }}%</td>
+                <td>{{ prediction[3] }}</td>
+            </tr>
+
+            {% endfor %}
+
+        </table>
+
+        {% else %}
+
+        <p>No predictions available yet.</p>
+
+        {% endif %}
+
+        <a href="/upload" class="btn">
+            🔍 New Prediction
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+</html>

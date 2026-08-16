@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Detection Result</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f8e9;
+            color: #1b5e20;
+        }
+
+        nav {
+            background: #2e7d32;
+            padding: 18px;
+            text-align: center;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 750px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 35px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #2e7d32;
+        }
+
+        .result {
+            margin: 25px 0;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 12px;
+        }
+
+        .result h2 {
+            color: #1b5e20;
+        }
+
+        .confidence {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        img {
+            max-width: 100%;
+            max-height: 350px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .btn {
+            display: inline-block;
+            margin: 10px;
+            padding: 13px 25px;
+            background: #2e7d32;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #1b5e20;
+        }
+    </style>
+</head>
+
+<body>
+
+<nav>
+    <a href="/">Home</a>
+    <a href="/upload">Detect Disease</a>
+    <a href="/dashboard">Dashboard</a>
+</nav>
+
+<div class="container">
+
+    <div class="card">
+
+        <h1>🌿 Detection Result</h1>
+
+        <img src="{{ url_for('static', filename=image_path) }}"
+             alt="Uploaded Plant Leaf">
+
+        <div class="result">
+
+            <h2>{{ disease }}</h2>
+
+            <p class="confidence">
+                Confidence: {{ confidence }}%
+            </p>
+
+            <h3>{{ status }}</h3>
+
+            <p>
+                {{ information }}
+            </p>
+
+        </div>
+
+        <a href="/upload" class="btn">
+            🔄 Test Another Image
+        </a>
+
+        <a href="/dashboard" class="btn">
+            📊 View Dashboard
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+</html>
