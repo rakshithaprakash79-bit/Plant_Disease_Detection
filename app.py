@@ -1,14 +1,11 @@
-from flask import Flask, render_template, request
 import os
 
-# -----------------------------
-# TensorFlow Optimization
-# -----------------------------
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+# TensorFlow CPU optimization
 os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
 os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
+from flask import Flask, render_template, request
 import tensorflow as tf
 import numpy as np
 
@@ -19,11 +16,17 @@ from database import (
     get_statistics
 )
 
+
+# =========================================================
+# FLASK APP
+# =========================================================
+
 app = Flask(__name__, template_folder="templates")
 
-# -----------------------------
-# Paths
-# -----------------------------
+
+# =========================================================
+# PATHS
+# =========================================================
 
 MODEL_PATH = "model/plant_disease_model.keras"
 CLASS_NAMES_PATH = "model/class_names.txt"
@@ -33,59 +36,55 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# -----------------------------
-# Create Database
-# -----------------------------
+
+# =========================================================
+# DATABASE
+# =========================================================
 
 create_database()
 
-# -----------------------------
-# Load AI Model
-# -----------------------------
+
+# =========================================================
+# LOAD AI MODEL
+# =========================================================
 
 print("Loading AI model...")
 
-model = tf.keras.models.load_model(
-    MODEL_PATH,
-    compile=False
-)
+model = tf.keras.models.load_model(MODEL_PATH)
 
 with open(CLASS_NAMES_PATH, "r") as file:
-    class_names = [
-        line.strip()
-        for line in file.readlines()
-        if line.strip()
-    ]
+    class_names = [line.strip() for line in file.readlines()]
 
 print("AI model loaded successfully!")
 print("Number of classes:", len(class_names))
 
 
-# -----------------------------
-# Home
-# -----------------------------
+# =========================================================
+# HOME
+# =========================================================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# -----------------------------
-# Upload
-# -----------------------------
+# =========================================================
+# UPLOAD PAGE
+# =========================================================
 
 @app.route("/upload")
 def upload():
     return render_template("upload.html")
 
 
-# -----------------------------
-# Prediction
-# -----------------------------
+# =========================================================
+# PREDICT
+# =========================================================
 
 @app.route("/predict", methods=["POST"])
 def predict():
 
+    # Check image
     if "leaf_image" not in request.files:
         return "No image selected."
 
@@ -94,9 +93,9 @@ def predict():
     if image.filename == "":
         return "No image selected."
 
-    # -----------------------------
-    # Save Uploaded Image
-    # -----------------------------
+    # -----------------------------------------------------
+    # Save image
+    # -----------------------------------------------------
 
     filename = image.filename
 
@@ -107,9 +106,9 @@ def predict():
 
     image.save(image_path)
 
-    # -----------------------------
-    # Prepare Image
-    # -----------------------------
+    # -----------------------------------------------------
+    # Prepare image
+    # -----------------------------------------------------
 
     img = tf.keras.utils.load_img(
         image_path,
@@ -123,12 +122,9 @@ def predict():
         axis=0
     )
 
-    # Normalize image
-    img_array = img_array / 255.0
-
-    # -----------------------------
+    # -----------------------------------------------------
     # AI Prediction
-    # -----------------------------
+    # -----------------------------------------------------
 
     predictions = model.predict(
         img_array,
@@ -143,15 +139,11 @@ def predict():
         np.max(predictions[0]) * 100
     )
 
-    # Safety check
-    if predicted_index >= len(class_names):
-        return "Prediction class not found."
-
     disease = class_names[predicted_index]
 
-    # -----------------------------
+    # -----------------------------------------------------
     # Status
-    # -----------------------------
+    # -----------------------------------------------------
 
     if "healthy" in disease.lower():
 
@@ -159,7 +151,8 @@ def predict():
 
         information = (
             "The uploaded leaf appears healthy. "
-            "Continue regular watering, nutrition and plant care."
+            "Continue regular watering, nutrition and "
+            "proper plant care."
         )
 
     else:
@@ -168,13 +161,13 @@ def predict():
 
         information = (
             "The AI model detected a possible plant disease. "
-            "Consider proper plant care and consult an agricultural "
-            "expert for confirmation and treatment."
+            "Consider proper plant care and consult an "
+            "agricultural expert for confirmation and treatment."
         )
 
-    # -----------------------------
-    # Save Prediction
-    # -----------------------------
+    # -----------------------------------------------------
+    # Save prediction to database
+    # -----------------------------------------------------
 
     add_prediction(
         filename,
@@ -183,9 +176,9 @@ def predict():
         status
     )
 
-    # -----------------------------
-    # Result Page
-    # -----------------------------
+    # -----------------------------------------------------
+    # Result page
+    # -----------------------------------------------------
 
     return render_template(
         "result.html",
@@ -197,9 +190,9 @@ def predict():
     )
 
 
-# -----------------------------
-# Dashboard
-# -----------------------------
+# =========================================================
+# DASHBOARD
+# =========================================================
 
 @app.route("/dashboard")
 def dashboard():
@@ -217,13 +210,16 @@ def dashboard():
     )
 
 
-# -----------------------------
-# Run Flask
-# -----------------------------
+# =========================================================
+# RUN
+# =========================================================
 
 if __name__ == "__main__":
+
+    port = int(os.environ.get("PORT", 5000))
+
     app.run(
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000)),
+        port=port,
         debug=False
     )
