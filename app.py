@@ -1,10 +1,16 @@
 from flask import Flask, render_template, request
 import os
-os.environ['TF_NUM_INTRAOP_THREADS']='1'
-os.environ['TF_NUM_INTEROP_THREADS']='1'
+
+# -----------------------------
+# TensorFlow Optimization
+# -----------------------------
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
+os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+
 import tensorflow as tf
 import numpy as np
-import os
 
 from database import (
     create_database,
@@ -27,7 +33,10 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Create database
+# -----------------------------
+# Create Database
+# -----------------------------
+
 create_database()
 
 # -----------------------------
@@ -36,10 +45,17 @@ create_database()
 
 print("Loading AI model...")
 
-model = tf.keras.models.load_model(MODEL_PATH)
+model = tf.keras.models.load_model(
+    MODEL_PATH,
+    compile=False
+)
 
 with open(CLASS_NAMES_PATH, "r") as file:
-    class_names = [line.strip() for line in file.readlines()]
+    class_names = [
+        line.strip()
+        for line in file.readlines()
+        if line.strip()
+    ]
 
 print("AI model loaded successfully!")
 print("Number of classes:", len(class_names))
@@ -78,10 +94,15 @@ def predict():
     if image.filename == "":
         return "No image selected."
 
-    # Save uploaded image
+    # -----------------------------
+    # Save Uploaded Image
+    # -----------------------------
+
+    filename = image.filename
+
     image_path = os.path.join(
         app.config["UPLOAD_FOLDER"],
-        image.filename
+        filename
     )
 
     image.save(image_path)
@@ -102,6 +123,9 @@ def predict():
         axis=0
     )
 
+    # Normalize image
+    img_array = img_array / 255.0
+
     # -----------------------------
     # AI Prediction
     # -----------------------------
@@ -111,13 +135,17 @@ def predict():
         verbose=0
     )
 
-    predicted_index = np.argmax(
-        predictions[0]
+    predicted_index = int(
+        np.argmax(predictions[0])
     )
 
     confidence = float(
         np.max(predictions[0]) * 100
     )
+
+    # Safety check
+    if predicted_index >= len(class_names):
+        return "Prediction class not found."
 
     disease = class_names[predicted_index]
 
@@ -149,7 +177,7 @@ def predict():
     # -----------------------------
 
     add_prediction(
-        image.filename,
+        filename,
         disease,
         confidence,
         status
@@ -165,7 +193,7 @@ def predict():
         confidence=f"{confidence:.2f}",
         status=status,
         information=information,
-        image_path="uploads/" + image.filename
+        image_path="uploads/" + filename
     )
 
 
@@ -194,4 +222,8 @@ def dashboard():
 # -----------------------------
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=False
+    )
